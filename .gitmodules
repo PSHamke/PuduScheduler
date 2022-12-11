@@ -1,0 +1,6 @@
+[submodule "Walnut"]
+	path = Walnut
+	url = https://github.com/PSHamke/Walnut.git
+[submodule "Raven/vendor/spdlog"]
+	path = Raven/vendor/spdlog
+	url = https://github.com/PSHamke/spdlog.git
