@@ -3,4 +3,6 @@
 namespace Raven
 {
 	void Handle();
+
+	void DebugTest();
 }

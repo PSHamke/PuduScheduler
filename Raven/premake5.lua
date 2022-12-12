@@ -10,7 +10,8 @@ kind "StaticLib"
    includedirs
    {
       "vendor/spdlog/include",
-      "src"
+      "src",
+      "../Walnut/Walnut/src"
    }
 
    links

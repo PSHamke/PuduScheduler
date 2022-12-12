@@ -19,6 +19,7 @@ public:
 		m_ImageOrig = std::make_shared<Walnut::Image>(1, 1,ImageFormat::RGBA);
 		Raven::Handle();
 		PS_CORE_INFO("Log From Pudu Scheduler");
+		Raven::DebugTest();
 	}
 
 	virtual void OnUIRender() override
