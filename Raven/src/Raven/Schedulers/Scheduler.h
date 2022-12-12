@@ -5,7 +5,7 @@
 class Scheduler
 {
 private:
-protected:
+public:
 
 	struct {
 		bool operator() (Process* lhs, Process* rhs) const

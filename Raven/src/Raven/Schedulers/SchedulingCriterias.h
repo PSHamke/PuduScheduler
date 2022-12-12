@@ -137,7 +137,7 @@ private:
 	static const uint8_t ProcessIdHigh(const Process* lhs, const Process* rhs) 
 	{
 
-		std::cout << "pid high \n";
+		
 		return uint8_t(lhs->GetProcessId() > rhs->GetProcessId());
 	}
 	//((s_CurrentTime - proc->GetArrivalTime()) == Waiting Time

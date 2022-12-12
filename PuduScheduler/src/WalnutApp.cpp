@@ -19,7 +19,7 @@ public:
 		m_ImageOrig = std::make_shared<Walnut::Image>(1, 1,ImageFormat::RGBA);
 		Raven::Handle();
 		PS_CORE_INFO("Log From Pudu Scheduler");
-		Raven::DebugTest();
+		
 	}
 
 	virtual void OnUIRender() override
@@ -29,6 +29,15 @@ public:
 		if (ImGui::Button("Render"))
 		{
 			Render();
+			Timer timer;
+			timer.Reset();
+			Raven::DebugTest();
+			float elapsed = timer.ElapsedMillis();
+			PS_CORE_INFO("Elapsed Time: {} MS", elapsed);
+			Raven::SchedulerHandler::FillTestProcess();
+			Raven::SchedulerHandler::AddScheduler(0, Raven::SchedulerType::SJF, { (uint8_t)Raven::Comparators::BurstLess, (uint8_t)Raven::Comparators::ArrivalLess,(uint8_t)Raven::Comparators::ProcessIdHigh });
+			Raven::SchedulerHandler::Run(0);
+			Raven::SchedulerHandler::CleanUp();
 		}
 		
 		ImGui::End();

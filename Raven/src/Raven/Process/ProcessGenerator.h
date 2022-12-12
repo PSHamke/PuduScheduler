@@ -4,18 +4,45 @@
 #include <numeric>
 #include <optional>
 
+/*
+	Singleton Class
+*/
 class ProcessGenerator
 {
 public:
+	ProcessGenerator(const ProcessGenerator&) = delete;
+
+	static ProcessGenerator& Get()
+	{
+		static ProcessGenerator instance;
+		return instance;
+	}
+
+	static std::optional<Process> Generate(const std::string& name, const uint32_t arrivalTime,
+									const uint32_t burstTime, const uint32_t priority)
+	{
+		return Get().IGenerate(name, arrivalTime, burstTime, priority);
+	}
+	
+	static std::optional<Process> Generate()
+	{
+		return Get().IGenerate();
+	}
+
+	static void ReleaseId(uint32_t id)
+	{
+		return Get().IReleaseId(id);
+	}
+private:
 	ProcessGenerator()
 	{
 		Walnut::Random::Init();
 		m_ProcessLimit = 100;
 		m_AvailableIds.resize(m_ProcessLimit);
 	}
-	std::optional<Process> Generate()
+	std::optional<Process> IGenerate()
 	{
-		return Generate
+		return IGenerate
 		("",
 			Walnut::Random::UInt(0, 4), // Arrival time
 			Walnut::Random::UInt(1, 5),  // Burst time
@@ -23,9 +50,10 @@ public:
 		);
 	}
 
-	std::optional<Process> Generate(const std::string& name, const uint32_t arrivalTime, const uint32_t burstTime, const uint32_t priority) // Custom 
+	std::optional<Process> IGenerate(const std::string& name, const uint32_t arrivalTime,
+								const uint32_t burstTime, const uint32_t priority) // Custom 
 	{
-		uint32_t p_Id = GetAvailableId();
+		uint32_t p_Id = IGetAvailableId();
 		if (p_Id >= m_ProcessLimit)
 			return std::nullopt;
 
@@ -40,7 +68,7 @@ public:
 
 		return proc;
 	}
-	const uint32_t GetAvailableId()
+	const uint32_t IGetAvailableId()
 	{
 		uint32_t i = 0;
 		for (; i < m_AvailableIds.size(); ++i)
@@ -55,7 +83,7 @@ public:
 		return i;
 	}
 
-	void ReleaseId(uint32_t id)
+	void IReleaseId(uint32_t id)
 	{
 		m_AvailableIds[id] = false;
 	}

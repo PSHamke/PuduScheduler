@@ -27,7 +27,7 @@ public:
 			{
 				PickToSchedule();
 			}
-			PrintReadyQueue();
+			//PrintReadyQueue();
 			if (m_ScheduledProcess != nullptr)
 				Progress();
 

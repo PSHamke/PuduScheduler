@@ -26,7 +26,7 @@ private:
 
 #ifndef PS_DEBUG
 #define PS_CORE_WARN(...)
-#define PS_CORE_INFO(...)
+#define PS_CORE_INFO(...)		 ::Log::GetCoreLogger()->info(__VA_ARGS__)
 #define PS_CORE_TRACE(...)
 #define PS_CORE_ERROR(...)
 #define PS_CORE_FATAL(...)
