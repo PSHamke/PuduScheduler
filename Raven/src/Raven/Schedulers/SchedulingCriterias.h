@@ -39,10 +39,10 @@ private:
 		PriorityHigh,
 		ArrivalLess,
 		ArrivalHigh,
-		QuantumUsageLess,
-		QuantumUsageHigh,
 		ProcessIdLess,
 		ProcessIdHigh,
+		QuantumUsageLess,
+		QuantumUsageHigh,
 		ResponseRatioLess,
 		ResponseRatioHigh
 	}};

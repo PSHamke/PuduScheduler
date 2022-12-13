@@ -1,6 +1,6 @@
 #pragma once
 #include "../Process/Process.h"
-#include "SchedulerSpec.h"
+#include "SchedulerSpecification.h"
 #include "SchedulingCriterias.h"
 class Scheduler
 {

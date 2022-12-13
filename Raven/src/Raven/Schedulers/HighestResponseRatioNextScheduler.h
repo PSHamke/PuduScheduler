@@ -6,16 +6,20 @@
 class HighestResponseRatioNextScheduler : public Scheduler
 {
 public:
-	HighestResponseRatioNextScheduler(std::vector<uint8_t>& compareOrder, SchedulerSpec spec)
+	HighestResponseRatioNextScheduler() : m_Initialized(false), m_ScheduledProcess(nullptr) {}
+
+	void Init(const SchedulerSpecification& specification)
 	{
-		m_TimeStamp = 0;
+		m_SchedulerId = specification.m_Id;
+		m_TimeStamp = specification.m_StartTime;
 		m_ScheduledProcess = nullptr;
-		m_CompareOrder = compareOrder;
+		m_CompareOrder = specification.m_CompareOrder;
 		m_RequirePreemption = true;
 		m_UnitTime = 1;
-		m_Spec = spec;
+		m_Prop = specification.m_Prop;
+		m_Initialized = true;
 	}
-
+public:
 	virtual void Schedule() override
 	{
 		while (m_UnProcessedCount > 0)
@@ -74,7 +78,7 @@ public:
 			}
 		}
 
-		if (m_Spec == SchedulerSpec::S_PREEMPTIVE)
+		if (m_Prop == SchedulerProp::S_PREEMPTIVE)
 		{
 			for (auto& process : m_ReadyQueue)
 			{
@@ -136,7 +140,8 @@ private:
 	uint32_t m_SchedulerId;
 	uint32_t m_TimeStamp; // Might use to keep actions as well ? 
 	uint32_t m_UnitTime;
-	SchedulerSpec m_Spec;
+	SchedulerProp m_Prop;
+	bool m_Initialized = false;
 	std::vector<Process*> m_ProcessPool;
 	uint32_t m_UnProcessedCount;
 	std::deque<Process*> m_ReadyQueue;

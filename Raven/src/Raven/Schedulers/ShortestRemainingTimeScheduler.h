@@ -6,15 +6,24 @@
 class ShortestRemainingTimeScheduler : public Scheduler
 {
 public:
-	ShortestRemainingTimeScheduler(std::vector<uint8_t>& compareOrder)
+	ShortestRemainingTimeScheduler() : m_Initialized(false), m_ScheduledProcess(nullptr){}
+
+	void Init(const SchedulerSpecification& specification)
 	{
-		m_TimeStamp = 0;
-		m_ScheduledProcess = nullptr;
-		m_CompareOrder = compareOrder;
+		m_SchedulerId = specification.m_Id;
+		m_TimeStamp = specification.m_StartTime;
+		m_CompareOrder = specification.m_CompareOrder;
 		m_RequirePreemption = true;
 		m_UnitTime = 1;
+		m_Initialized = true;
 	}
 
+	inline const bool IsInitialized() const
+	{
+		return m_Initialized;
+	}
+
+public:
 	virtual void Schedule() override
 	{
 		while (m_UnProcessedCount > 0)
@@ -130,7 +139,8 @@ private:
 	uint32_t m_SchedulerId;
 	uint32_t m_TimeStamp; // Might use to keep actions as well ? 
 	uint32_t m_UnitTime;
-	SchedulerSpec m_Spec;
+	SchedulerProp m_Spec;
+	bool m_Initialized;
 	std::vector<Process*> m_ProcessPool;
 	uint32_t m_UnProcessedCount;
 	std::deque<Process*> m_ReadyQueue;

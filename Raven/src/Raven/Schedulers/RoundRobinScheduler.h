@@ -14,29 +14,26 @@
 class RoundRobinScheduler : public Scheduler
 {
 public:
-	RoundRobinScheduler(std::vector<uint8_t>& compareOrder, uint32_t quantum)
+	RoundRobinScheduler() : m_Initialized(false), m_ScheduledProcess(nullptr){}
+
+	void Init(const SchedulerSpecification& specification)
 	{
-		m_TimeStamp = 0;
-		m_ScheduledProcess = nullptr;
+		m_SchedulerId = specification.m_Id;
+		m_TimeStamp = specification.m_StartTime;
 		m_RequirePreemption = true;
 		m_UnitTime = 1;
-		m_Quantum = quantum;
-		m_CompareOrder = compareOrder;
-		m_Spec = SchedulerSpec::S_NON_PREEMPTIVE;
-
+		m_Quantum = specification.m_Quantum;
+		m_CompareOrder = specification.m_CompareOrder;
+		m_Prop = specification.m_Prop;
+		m_PreemptionOrder = specification.m_PreemptionOrder;
+		m_Initialized = true;
 	}
-	RoundRobinScheduler(std::vector<uint8_t>& compareOrder, std::vector<uint8_t>& preemptionOrder, uint32_t quantum)
+
+	inline const bool IsInitialized() const
 	{
-		m_TimeStamp = 0;
-		m_ScheduledProcess = nullptr;
-		m_RequirePreemption = true;
-		m_UnitTime = 1;
-		m_Quantum = quantum;
-		m_CompareOrder = compareOrder;
-		m_Spec = SchedulerSpec::S_PREEMPTIVE;
-		m_PreemptionOrder = preemptionOrder;
-
+		return m_Initialized;
 	}
+public:
 	// TODO: Arrange Unit Time ?
 	virtual void Schedule() override
 	{
@@ -101,7 +98,7 @@ public:
 				m_IntermediateQueue.push_back(process);
 				process->UpdateStatus(m_TimeStamp, Process::ProcessStatus::P_WAITING_IN_READY_QUEUE);
 				
-				if (m_Spec == SchedulerSpec::S_PREEMPTIVE && m_ScheduledProcess != nullptr && !alreadyQueued)
+				if (m_Prop == SchedulerProp::S_PREEMPTIVE && m_ScheduledProcess != nullptr && !alreadyQueued)
 				{
 					if (SchedulingCriterias(m_PreemptionOrder, m_TimeStamp)( process, m_ScheduledProcess))
 					{
@@ -148,7 +145,8 @@ private:
 	uint32_t m_SchedulerId;
 	uint32_t m_TimeStamp; // Might use to keep actions as well ? 
 	uint32_t m_UnitTime;
-	SchedulerSpec m_Spec;
+	SchedulerProp m_Prop;
+	bool m_Initialized;
 	std::vector<Process*> m_ProcessPool;
 	uint32_t m_UnProcessedCount;
 	std::deque<Process*> m_ReadyQueue;
