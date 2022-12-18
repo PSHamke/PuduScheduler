@@ -16,9 +16,10 @@ class RoundRobinScheduler : public Scheduler
 public:
 	RoundRobinScheduler() : m_Initialized(false), m_ScheduledProcess(nullptr){}
 
-	void Init(const SchedulerSpecification& specification)
+	virtual void Init(const SchedulerSpecification& specification) override
 	{
 		m_SchedulerId = specification.m_Id;
+		m_StartTime = specification.m_StartTime;
 		m_TimeStamp = specification.m_StartTime;
 		m_RequirePreemption = true;
 		m_UnitTime = 1;
@@ -27,11 +28,38 @@ public:
 		m_Prop = specification.m_Prop;
 		m_PreemptionOrder = specification.m_PreemptionOrder;
 		m_Initialized = true;
+		m_Result = false;
 	}
 
 	inline const bool IsInitialized() const
 	{
 		return m_Initialized;
+	}
+
+	std::vector<uint8_t>& GetComparatorList() override
+	{
+		return m_CompareOrder;
+	}
+
+	virtual std::reference_wrapper<uint32_t> GetStartTimeRef() override
+	{
+		return std::ref(m_StartTime);
+	}
+	virtual std::reference_wrapper<uint32_t> GetQuantumRef() override
+	{
+		return std::ref(m_Quantum);
+	}
+	virtual const uint8_t GetId()
+	{
+		return m_SchedulerId;
+	}
+	virtual bool IsReadyToGrabResult() const override
+	{
+		return m_Result;
+	}
+	virtual std::vector<ProcessChart>& GetProcessChart() override
+	{
+		return m_ProcessCharts;
 	}
 public:
 	// TODO: Arrange Unit Time ?
@@ -51,10 +79,30 @@ public:
 				Progress();
 			m_TimeStamp += m_UnitTime;
 		}
+		m_Result = true;
 	}
 
 	virtual void Progress()
 	{
+
+		if (!m_ProcessCharts.empty())
+		{
+			auto& previous = m_ProcessCharts.back();
+			if (previous.m_Label == m_ScheduledProcess->GetProcessLabel())
+			{
+				previous.m_Usage += 1;
+			}
+			else
+			{
+				ProcessChart temp{ m_ScheduledProcess->GetProcessLabel(),1,m_TimeStamp };
+				m_ProcessCharts.push_back(temp);
+			}
+		}
+		else
+		{
+			ProcessChart temp{ m_ScheduledProcess->GetProcessLabel(),1,m_TimeStamp };
+			m_ProcessCharts.push_back(temp);
+		}
 		
 		m_ScheduledProcess->Burst(1, m_TimeStamp);
 		m_ScheduledProcess->UseQuantum(1);
@@ -87,6 +135,16 @@ public:
 		std::sort(m_ProcessPool.begin(), m_ProcessPool.end(), c_ArrivalComparator);
 		m_UnProcessedCount = m_ProcessPool.size();
 
+	}
+
+	virtual void ClearPreviousData()
+	{
+		m_ProcessPool.clear();
+		m_ReadyQueue.clear();
+		m_TimeStamp = 0;
+		m_ScheduledProcess = nullptr;
+		m_ProcessCharts.clear();
+		m_UnProcessedCount = 0;
 	}
 
 	virtual void FillReadyQueue()
@@ -143,6 +201,7 @@ public:
 
 private:
 	uint32_t m_SchedulerId;
+	uint32_t m_StartTime;
 	uint32_t m_TimeStamp; // Might use to keep actions as well ? 
 	uint32_t m_UnitTime;
 	SchedulerProp m_Prop;
@@ -156,5 +215,7 @@ private:
 	bool m_RequirePreemption;
 	uint32_t m_Quantum;
 	std::vector<uint8_t> m_PreemptionOrder;
+	std::vector<ProcessChart> m_ProcessCharts;
+	bool m_Result;
 	
 };

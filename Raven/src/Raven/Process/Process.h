@@ -26,6 +26,22 @@ struct TimeStamp
 	uint32_t m_EndTime;
 };
 
+
+struct ProcessChart
+{
+	enum class CompleteReason
+	{
+		Finished,
+		Preempted
+	};
+
+	std::string m_Label;
+	int32_t m_Usage;
+	int32_t m_StartTime;
+	//ImU32 m_Color;
+	CompleteReason m_Reason;
+};
+
 class Process
 {
 public:
@@ -43,10 +59,11 @@ public:
 	Process(const std::string& name, const uint32_t id, const uint32_t arrivalTime, const uint32_t burstTime, const uint32_t priority) :
 		m_ProcessName(name), m_ProcessId(id), m_ArrivalTime(arrivalTime), m_CPUBustTime(burstTime), m_Priority(priority)
 	{
-		m_ProcessLabel = std::format("p_{}", m_ProcessId);
+		m_ProcessLabel = std::format("P{}", m_ProcessId);
 		m_RemainingBurst = m_CPUBustTime;
 		m_QuantumUsage = 0;
 		m_Status = ProcessStatus::P_UNAVAILABLE;
+		m_Used = false;
 	}
 	friend std::ostream& operator <<(std::ostream& os, Process  const& proc)
 	{
@@ -58,7 +75,20 @@ public:
 	{
 		return m_ArrivalTime;
 	}
+	inline std::reference_wrapper<uint32_t> GetArrivalTimeRef()
+	{
+		return std::ref(m_ArrivalTime);
+	}
 
+	inline std::reference_wrapper<uint32_t> GetBurstTimeRef()
+	{
+		return std::ref(m_CPUBustTime);
+	}
+
+	inline std::reference_wrapper<uint32_t> GetPriorityRef()
+	{
+		return std::ref(m_Priority);
+	}
 	inline const bool IsAvailableAt(uint32_t currentTime) const
 	{
 		return m_ArrivalTime <= currentTime;
@@ -112,6 +142,10 @@ public:
 	{
 		return m_RemainingBurst;
 	}
+	inline void SetRemainingTime(uint32_t remainingTime)
+	{
+		m_RemainingBurst = remainingTime;
+	}
 	const uint32_t GetPriority() const
 	{
 		return m_Priority;
@@ -125,8 +159,13 @@ public:
 	{
 		return m_ProcessId;
 	}
+	inline const std::string& GetProcessLabel() const
+	{
+		return m_ProcessLabel;
+	}
 	inline void Burst(uint32_t burstAmount, uint32_t startTime)
 	{
+		m_Used = true;
 		m_RemainingBurst -= burstAmount;
 		m_TimeStamps.push_back({ Action::BURST, startTime, startTime + burstAmount });
 	}
@@ -137,6 +176,19 @@ public:
 	inline void UseQuantum(uint32_t burstAmount)
 	{
 		m_QuantumUsage += burstAmount;
+	}
+
+	inline void RevertBack()
+	{
+		if (m_Used)
+		{
+			m_QuantumUsage = 0;
+			m_RemainingBurst = m_CPUBustTime;
+			m_Status = ProcessStatus::P_UNAVAILABLE;
+			m_TimeStamps.clear();
+			m_Used = false;
+		}
+
 	}
 	void PrintTimeStamps(std::ostream& os) const
 	{
@@ -155,6 +207,7 @@ public:
 		};
 
 		os << "{p_" << m_ProcessId << "}\n";
+		os << "{CPU BURST :" << m_CPUBustTime << "}\n";
 		for (const auto& it : m_TimeStamps)
 		{
 			os << "S: " << it.m_StartTime << " - F: " << it.m_EndTime;
@@ -187,4 +240,5 @@ private:
 	uint32_t m_QuantumUsage;
 	std::vector<TimeStamp> m_TimeStamps;
 	ProcessStatus m_Status;
+	bool m_Used;
 };

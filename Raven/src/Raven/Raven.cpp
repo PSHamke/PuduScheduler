@@ -23,7 +23,7 @@ void Raven::DebugTest()
 	//ShortestJobFirstScheduler scheduler{ compareOrder };
 
 	//std::vector<uint8_t> compareOrder6{ (uint32_t)Comparators::ResponseRatioHigh,(uint8_t)Comparators::RemainingTimeLess,(uint8_t)Comparators::ProcessIdHigh };
-	//HighestResponseRatioNextScheduler scheduler{ compareOrder6, SchedulerSpec::S_PREEMPTIVE };
+	//HighestResponseRatioNextScheduler scheduler{ compareOrder6, SchedulerProp::S_PREEMPTIVE };
 
 	//scheduler.SubmitProcessPool(processPool);
 	//scheduler.Schedule();

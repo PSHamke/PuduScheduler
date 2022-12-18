@@ -8,9 +8,10 @@ class HighestResponseRatioNextScheduler : public Scheduler
 public:
 	HighestResponseRatioNextScheduler() : m_Initialized(false), m_ScheduledProcess(nullptr) {}
 
-	void Init(const SchedulerSpecification& specification)
+	virtual void Init(const SchedulerSpecification& specification) override
 	{
 		m_SchedulerId = specification.m_Id;
+		m_StartTime = specification.m_StartTime;
 		m_TimeStamp = specification.m_StartTime;
 		m_ScheduledProcess = nullptr;
 		m_CompareOrder = specification.m_CompareOrder;
@@ -18,7 +19,41 @@ public:
 		m_UnitTime = 1;
 		m_Prop = specification.m_Prop;
 		m_Initialized = true;
+		m_Result = false;
 	}
+
+	inline const bool IsInitialized() const
+	{
+		return m_Initialized;
+	}
+
+	std::vector<uint8_t>& GetComparatorList() override
+	{
+		return m_CompareOrder;
+	}
+
+	virtual std::reference_wrapper<uint32_t> GetStartTimeRef() override
+	{
+		return std::ref(m_StartTime);
+	}
+	virtual std::reference_wrapper<uint32_t> GetQuantumRef() override
+	{
+		return std::ref(m_StartTime);
+	}
+	virtual const uint8_t GetId()
+	{
+		return m_SchedulerId;
+	}
+
+	virtual bool IsReadyToGrabResult() const override
+	{
+		return m_Result;
+	}
+	virtual std::vector<ProcessChart>& GetProcessChart() override
+	{
+		return m_ProcessCharts;
+	}
+
 public:
 	virtual void Schedule() override
 	{
@@ -38,11 +73,38 @@ public:
 			m_TimeStamp += m_UnitTime;
 
 		}
-
+		m_Result = true;
 	}
 
+
+	/*
+		std::string m_Label;
+	int32_t m_Usage;
+	int32_t m_StartTime;
+	//ImU32 m_Color;
+	CompleteReason m_Reason;
+	*/
 	virtual void Progress()
 	{
+		if (!m_ProcessCharts.empty())
+		{
+			auto& previous = m_ProcessCharts.back();
+			if (previous.m_Label == m_ScheduledProcess->GetProcessLabel())
+			{
+				previous.m_Usage += 1;
+			}
+			else
+			{
+				ProcessChart temp{ m_ScheduledProcess->GetProcessLabel(),1,m_TimeStamp };
+				m_ProcessCharts.push_back(temp);
+			}
+		}
+		else 
+		{
+			ProcessChart temp{ m_ScheduledProcess->GetProcessLabel(),1,m_TimeStamp };
+			m_ProcessCharts.push_back(temp);
+		}
+
 
 		m_ScheduledProcess->Burst(m_UnitTime, m_TimeStamp);
 
@@ -66,7 +128,15 @@ public:
 		m_UnProcessedCount = m_ProcessPool.size();
 
 	}
-
+	virtual void ClearPreviousData()
+	{
+		m_ProcessPool.clear();
+		m_ReadyQueue.clear();
+		m_TimeStamp = 0;
+		m_ScheduledProcess = nullptr;
+		m_ProcessCharts.clear();
+		m_UnProcessedCount = 0;
+	}
 	virtual void FillReadyQueue()
 	{
 		bool alreadyQueued = false;
@@ -138,6 +208,7 @@ public:
 	}
 private:
 	uint32_t m_SchedulerId;
+	uint32_t m_StartTime;
 	uint32_t m_TimeStamp; // Might use to keep actions as well ? 
 	uint32_t m_UnitTime;
 	SchedulerProp m_Prop;
@@ -147,5 +218,7 @@ private:
 	std::deque<Process*> m_ReadyQueue;
 	Process* m_ScheduledProcess;
 	std::vector<uint8_t> m_CompareOrder;
+	std::vector<ProcessChart> m_ProcessCharts;
 	bool m_RequirePreemption;
+	bool m_Result;
 };

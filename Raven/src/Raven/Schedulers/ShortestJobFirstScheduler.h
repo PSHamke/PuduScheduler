@@ -9,7 +9,7 @@ class ShortestJobFirstScheduler : public Scheduler
 public:
 	ShortestJobFirstScheduler() : m_Initialized(false), m_ScheduledProcess(nullptr){}
 
-	void Init(const SchedulerSpecification& specification)
+	virtual void Init(const SchedulerSpecification& specification) override
 	{
 		m_SchedulerId = specification.m_Id;
 		m_StartTime = specification.m_StartTime;
@@ -18,6 +18,7 @@ public:
 		m_CompareOrder = specification.m_CompareOrder;
 		m_Spec = specification.m_Prop;
 		m_Initialized = true;
+		m_Result = false;
 	}
 
 	inline const bool IsInitialized() const
@@ -25,6 +26,30 @@ public:
 		return m_Initialized;
 	}
 
+	virtual std::vector<uint8_t>& GetComparatorList() override
+	{
+		return m_CompareOrder;
+	}
+	virtual std::reference_wrapper<uint32_t>GetStartTimeRef() override
+	{
+		return std::ref(m_StartTime);
+	}
+	virtual std::reference_wrapper<uint32_t> GetQuantumRef() override
+	{
+		return std::ref(m_StartTime);
+	}
+	virtual const uint8_t GetId()
+	{
+		return m_SchedulerId;
+	}
+	virtual bool IsReadyToGrabResult() const override
+	{
+		return m_Result;
+	}
+	virtual std::vector<ProcessChart>& GetProcessChart() override
+	{
+		return m_ProcessCharts;
+	}
 public:
 	virtual void Schedule() override
 	{
@@ -42,20 +67,39 @@ public:
 	
 			m_TimeStamp+=m_UnitTime;
 		}
-
+		m_Result = true;
 	}
 
 
 	// Burst 1 unit time;
 	virtual void Progress()
 	{
-			m_ScheduledProcess->Burst(m_UnitTime,m_TimeStamp);
-			if (m_ScheduledProcess->GetRemainingTime() == 0)
+		if (!m_ProcessCharts.empty())
+		{
+			auto& previous = m_ProcessCharts.back();
+			if (previous.m_Label == m_ScheduledProcess->GetProcessLabel())
 			{
-				m_ScheduledProcess->UpdateStatus(m_TimeStamp+1,Process::ProcessStatus::P_SCHEDULED);
-				m_ScheduledProcess = nullptr;
-				--m_UnProcessedCount;
+				previous.m_Usage += 1;
 			}
+			else
+			{
+				ProcessChart temp{ m_ScheduledProcess->GetProcessLabel(),1,m_TimeStamp };
+				m_ProcessCharts.push_back(temp);
+			}
+		}
+		else
+		{
+			ProcessChart temp{ m_ScheduledProcess->GetProcessLabel(),1,m_TimeStamp };
+			m_ProcessCharts.push_back(temp);
+		}
+
+		m_ScheduledProcess->Burst(m_UnitTime,m_TimeStamp);
+		if (m_ScheduledProcess->GetRemainingTime() == 0)
+		{
+			m_ScheduledProcess->UpdateStatus(m_TimeStamp+1,Process::ProcessStatus::P_SCHEDULED);
+			m_ScheduledProcess = nullptr;
+			--m_UnProcessedCount;
+		}
 		
 	}
 
@@ -70,6 +114,15 @@ public:
 
 	}
 
+	virtual void ClearPreviousData()
+	{
+		m_ProcessPool.clear();
+		m_ReadyQueue.clear();
+		m_TimeStamp = 0;
+		m_ScheduledProcess = nullptr;
+		m_ProcessCharts.clear();
+		m_UnProcessedCount = 0;
+	}
 	// When process become available push_back (enqueue) to ready queue 
 	// such a way that processes are sorted respect to scheduling criteria.
 	virtual void FillReadyQueue() 
@@ -117,4 +170,6 @@ private:
 	std::deque<Process*> m_ReadyQueue;
 	Process* m_ScheduledProcess;
 	std::vector<uint8_t> m_CompareOrder;
+	std::vector<ProcessChart> m_ProcessCharts;
+	bool m_Result;
 };
