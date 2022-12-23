@@ -23,12 +23,18 @@ public:
 		m_TimeStamp = specification.m_StartTime;
 		m_RequirePreemption = true;
 		m_UnitTime = 1;
-		m_Quantum = specification.m_Quantum;
-		m_CompareOrder = specification.m_CompareOrder;
-		m_Prop = specification.m_Prop;
-		m_PreemptionOrder = specification.m_PreemptionOrder;
+		m_SchedulingQueues = specification.m_QueueFeatures;
+		m_CompareOrder = specification.m_QueueFeatures[0].m_CompareOrder;
+		m_Prop = specification.m_QueueFeatures[0].m_Prop;
+		m_PreemptionOrder = specification.m_QueueFeatures[0].m_PreemptionOrder;
 		m_Initialized = true;
 		m_Result = false;
+		m_Throughput = 0;
+		m_Utilization = 0;
+		m_TotalExecution = 0;
+		m_AVGResponseTime = 0.0f;
+		m_AVGWaitingTime = 0.0f;
+		m_AVGTurnaroundTime = 0.0f;
 	}
 
 	inline const bool IsInitialized() const
@@ -36,18 +42,23 @@ public:
 		return m_Initialized;
 	}
 
-	std::vector<uint8_t>& GetComparatorList() override
+	std::vector<uint8_t>& GetComparatorList(uint8_t /*DUMMY*/) override
 	{
 		return m_CompareOrder;
+	}
+
+	std::vector<SchedulerQueueFeatures>& GetQueueFeatures() override
+	{
+		return m_SchedulingQueues;
 	}
 
 	virtual std::reference_wrapper<uint32_t> GetStartTimeRef() override
 	{
 		return std::ref(m_StartTime);
 	}
-	virtual std::reference_wrapper<uint32_t> GetQuantumRef() override
+	virtual std::reference_wrapper<uint32_t> GetQuantumRef(uint8_t queueIndex) override
 	{
-		return std::ref(m_Quantum);
+		return std::ref(m_SchedulingQueues[queueIndex].m_Quantum);
 	}
 	virtual const uint8_t GetId()
 	{
@@ -60,6 +71,31 @@ public:
 	virtual std::vector<ProcessChart>& GetProcessChart() override
 	{
 		return m_ProcessCharts;
+	}
+	virtual std::vector<SchedulingMetrics>& GetSchedulingMetrics() override
+	{
+		return m_SchedulingMetrics;
+	}
+
+	virtual const float GetUtilization() override
+	{
+		return m_Utilization;
+	}
+	virtual const float GetThroughput() override
+	{
+		return m_Throughput;
+	}
+	virtual const float GetAVGTurnaroundTime() override
+	{
+		return m_AVGTurnaroundTime;
+	}
+	virtual const float GetAVGResponseTime() override
+	{
+		return m_AVGResponseTime;
+	}
+	virtual const float GetAVGWaitingTime() override
+	{
+		return m_AVGWaitingTime;
 	}
 public:
 	// TODO: Arrange Unit Time ?
@@ -79,6 +115,26 @@ public:
 				Progress();
 			m_TimeStamp += m_UnitTime;
 		}
+
+		for (const auto& it : m_ProcessPool)
+		{
+			uint32_t start = it->GetSchedulingStartTime();
+			uint32_t end = it->GetSchedulingEndTime();
+			SchedulingMetrics temp{};
+			temp.m_Label = it->GetProcessLabel();
+			temp.m_ResponseTime = it->GetFirstResponseTime() - it->GetArrivalTime();
+			temp.m_TurnaroundTime = end - start;
+			temp.m_WaitingTime = end - start - it->GetBurstTime();
+			m_AVGResponseTime += temp.m_ResponseTime;
+			m_AVGTurnaroundTime += temp.m_TurnaroundTime;
+			m_AVGWaitingTime += temp.m_WaitingTime;
+			m_SchedulingMetrics.push_back(temp);
+		}
+		m_AVGResponseTime /= m_ProcessPool.size();
+		m_AVGTurnaroundTime /= m_ProcessPool.size();
+		m_AVGWaitingTime /= m_ProcessPool.size();
+		m_Utilization = (m_TimeStamp - m_TotalExecution) / (float)m_TimeStamp;
+		m_Throughput = (m_ProcessPool.size()) / (float)m_TimeStamp;
 		m_Result = true;
 	}
 
@@ -105,6 +161,7 @@ public:
 		}
 		
 		m_ScheduledProcess->Burst(1, m_TimeStamp);
+		m_TotalExecution++;
 		m_ScheduledProcess->UseQuantum(1);
 
 		if (m_ScheduledProcess->GetRemainingTime() == 0)
@@ -114,7 +171,7 @@ public:
 			m_RequirePreemption = true;
 			--m_UnProcessedCount;
 		}
-		else if (m_ScheduledProcess->GetQuantumUsage() % m_Quantum == 0 && !m_ReadyQueue.empty())
+		else if (m_ScheduledProcess->GetQuantumUsage() % m_SchedulingQueues[0].m_Quantum == 0 && !m_ReadyQueue.empty())
 		{
 			m_ScheduledProcess->UpdateStatus(m_TimeStamp + 1, Process::ProcessStatus::P_PREEMPTED);
 			m_ReadyQueue.push_back(m_ScheduledProcess);
@@ -213,9 +270,16 @@ private:
 	Process* m_ScheduledProcess;
 	std::vector<uint8_t> m_CompareOrder;
 	bool m_RequirePreemption;
-	uint32_t m_Quantum;
 	std::vector<uint8_t> m_PreemptionOrder;
 	std::vector<ProcessChart> m_ProcessCharts;
+	std::vector<SchedulerQueueFeatures> m_SchedulingQueues;
+	std::vector<SchedulingMetrics> m_SchedulingMetrics;
+	float m_Throughput;
+	float m_Utilization;
+	uint32_t m_TotalExecution;
 	bool m_Result;
+	float m_AVGTurnaroundTime;
+	float m_AVGResponseTime;
+	float m_AVGWaitingTime;
 	
 };

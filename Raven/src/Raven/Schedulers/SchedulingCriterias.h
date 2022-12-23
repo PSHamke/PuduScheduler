@@ -7,7 +7,7 @@ struct SchedulingCriterias
 {
 public:
 #define equal 2
-	using t_ComparatorList = std::array<std::function<const uint8_t(const Process*, const Process*)>, 14>;
+	using t_ComparatorList = std::array<std::function<const uint8_t(const Process*, const Process*)>, 20>;
 	bool operator() (const Process* lhs, const Process* rhs) const
 	{
 		uint8_t result = 0;
@@ -44,7 +44,13 @@ private:
 		QuantumUsageLess,
 		QuantumUsageHigh,
 		ResponseRatioLess,
-		ResponseRatioHigh
+		ResponseRatioHigh,
+		VRunTimeLess,
+		VRunTimeHigh,
+		NiceValueLess,
+		NiceValueHigh,
+		GlobalPriorityLess,
+		GlobalPriorityHigh,
 	}};
 	static const uint8_t BurstLess(const Process* lhs, const Process* rhs)
 	{
@@ -159,5 +165,36 @@ private:
 			return equal;
 		return scoreL > scoreR;
 	}
+
+	static const uint8_t VRunTimeLess(const Process* lhs, const Process* rhs)
+	{
+		return uint8_t(lhs->GetNextVRunTime() < rhs->GetNextVRunTime());
+	}
+
+	static const uint8_t VRunTimeHigh(const Process* lhs, const Process* rhs)
+	{
+		return uint8_t(lhs->GetNextVRunTime() > rhs->GetNextVRunTime());
+	}
+
+	static const uint8_t NiceValueLess(const Process* lhs, const Process* rhs)
+	{
+		return uint8_t(lhs->GetNiceValue() < rhs->GetNiceValue());
+	}
+
+	static const uint8_t NiceValueHigh(const Process* lhs, const Process* rhs)
+	{
+		return uint8_t(lhs->GetNiceValue() > rhs->GetNiceValue());
+	}
+
+	static const uint8_t GlobalPriorityLess(const Process* lhs, const Process* rhs)
+	{
+		return uint8_t(lhs->GetGlobalPriority() < rhs->GetGlobalPriority());
+	}
+
+	static const uint8_t GlobalPriorityHigh(const Process* lhs, const Process* rhs)
+	{
+		return uint8_t(lhs->GetGlobalPriority() > rhs->GetGlobalPriority());
+	}
+	
 #undef equal
 };

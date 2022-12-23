@@ -26,7 +26,15 @@ struct TimeStamp
 	uint32_t m_EndTime;
 };
 
-
+enum class ProcessClass : uint8_t
+{
+	Time_Sharing,
+	Interactive,
+	Fair_Share,
+	Fixed_Priority,
+	System,
+	Real_Time
+};
 struct ProcessChart
 {
 	enum class CompleteReason
@@ -38,8 +46,22 @@ struct ProcessChart
 	std::string m_Label;
 	int32_t m_Usage;
 	int32_t m_StartTime;
+	int32_t m_QueueIndex;
+	uint32_t m_Quantum;
+	uint8_t m_QueueType;
+	
 	//ImU32 m_Color;
-	CompleteReason m_Reason;
+	//CompleteReason m_Reason;
+};
+
+
+
+struct SchedulingMetrics
+{
+	std::string m_Label;
+	uint32_t m_TurnaroundTime;
+	uint32_t m_WaitingTime;
+	uint32_t m_ResponseTime;
 };
 
 class Process
@@ -56,12 +78,19 @@ public:
 	};
 	Process() = default;
 public:
-	Process(const std::string& name, const uint32_t id, const uint32_t arrivalTime, const uint32_t burstTime, const uint32_t priority) :
-		m_ProcessName(name), m_ProcessId(id), m_ArrivalTime(arrivalTime), m_CPUBustTime(burstTime), m_Priority(priority)
+	Process(const std::string& name, const uint32_t id, const uint32_t arrivalTime, const uint32_t burstTime, 
+		const uint32_t priority, const uint32_t vruntime, const uint32_t niceValue, const ProcessClass processClass, const uint32_t globalPriority) :
+		m_ProcessName(name), m_ProcessId(id), m_ArrivalTime(arrivalTime), m_CPUBustTime(burstTime), m_Priority(priority),
+		m_VRunTime(vruntime), m_NiceValue(niceValue), m_ProcessClass(processClass), m_GlobalPriority(globalPriority)
 	{
 		m_ProcessLabel = std::format("P{}", m_ProcessId);
 		m_RemainingBurst = m_CPUBustTime;
 		m_QuantumUsage = 0;
+		m_CurrentQueue = 0;
+		m_NextVRunTime = vruntime;
+		m_StartSchedulingTime = 0;
+		m_EndSchedulingTime = 0;
+		m_FirstResponseTime = -1;
 		m_Status = ProcessStatus::P_UNAVAILABLE;
 		m_Used = false;
 	}
@@ -89,6 +118,21 @@ public:
 	{
 		return std::ref(m_Priority);
 	}
+
+	inline std::reference_wrapper<uint32_t> GetVRuntimeRef()
+	{
+		return std::ref(m_VRunTime);
+	}
+
+	inline std::reference_wrapper<uint32_t> GetNiceValueRef()
+	{
+		return std::ref(m_NiceValue);
+	}
+
+	inline std::reference_wrapper<ProcessClass> GetProcessClassRef()
+	{
+		return std::ref(m_ProcessClass);
+	}
 	inline const bool IsAvailableAt(uint32_t currentTime) const
 	{
 		return m_ArrivalTime <= currentTime;
@@ -98,6 +142,7 @@ public:
 		if (m_Status == ProcessStatus::P_UNAVAILABLE && IsAvailableAt(currentTime))
 		{
 			SetStatus(ProcessStatus::P_WAITING_TO_SUBMIT);
+			m_StartSchedulingTime = currentTime;
 			m_TimeStamps.push_back({ Action::SUBMITTED_TO_SCHEDULER,currentTime,currentTime }); // Submitted using only one cycle
 			m_TimeStamps.push_back({ Action::SUBMITTED_TO_WAIT_QUEUE,currentTime,currentTime }); // Submitted using only one cycle
 		}
@@ -125,6 +170,7 @@ public:
 			SetStatus(ProcessStatus::P_SCHEDULED);
 			m_TimeStamps.push_back({ Action::SCHEDULED,currentTime,currentTime }); // Signalled only one cycle
 			m_TimeStamps.push_back({ Action::CONTEXT_SWITCH_TO_OUT,currentTime,currentTime }); // Signalled only one cycle
+			m_EndSchedulingTime = currentTime;
 			break;
 		}
 
@@ -151,6 +197,85 @@ public:
 		return m_Priority;
 	}
 
+	const uint32_t GetVRunTime() const 
+	{
+		return m_VRunTime;
+	}
+	const uint32_t GetSchedulingStartTime() const
+	{
+		return m_StartSchedulingTime;
+	}
+	const uint32_t GetSchedulingEndTime() const
+	{
+		return m_EndSchedulingTime;
+	}
+
+	const uint32_t GetFirstResponseTime() const
+	{
+		return m_FirstResponseTime;
+	}
+	const float GetNextVRunTime() const
+	{
+		return m_NextVRunTime;
+	}
+
+	const uint32_t GetGlobalPriority() const
+	{
+		return m_GlobalPriority;
+	}
+
+	void SetGlobalPriority(const uint32_t globalPriority)
+	{
+		if ((uint32_t)m_ProcessClass <= 3)
+		{
+			m_GlobalPriority = globalPriority;
+
+			if (m_GlobalPriority > 59)
+			{
+				m_GlobalPriority = 59;
+			}
+		}
+		else if (m_ProcessClass == ProcessClass::System)
+		{
+			m_GlobalPriority = globalPriority;
+			if (globalPriority < 60)
+			{
+				m_GlobalPriority = 60;
+			}
+			else if (globalPriority > 99)
+			{
+				m_GlobalPriority = 99;
+			}
+		}
+		else
+		{
+			m_GlobalPriority = globalPriority;
+			if (globalPriority < 100)
+			{
+				m_GlobalPriority = 100;
+			}
+			else if (globalPriority > 159)
+			{
+				m_GlobalPriority = 159;
+			}
+		}
+	}
+
+	void SetNextVRunTime(const float nextVRunTime)
+	{
+		m_NextVRunTime = nextVRunTime;
+	}
+
+	const uint32_t GetNiceValue() const
+	{
+		return m_NiceValue;
+	}
+
+	const ProcessClass GetProcessClass() const
+	{
+		return m_ProcessClass;
+	}
+
 	inline void SetStatus(const ProcessStatus status)
 	{
 		m_Status = status;
@@ -165,6 +290,9 @@ public:
 	}
 	inline void Burst(uint32_t burstAmount, uint32_t startTime)
 	{
+		if (m_FirstResponseTime == -1)
+			m_FirstResponseTime = startTime;
+
 		m_Used = true;
 		m_RemainingBurst -= burstAmount;
 		m_TimeStamps.push_back({ Action::BURST, startTime, startTime + burstAmount });
@@ -173,9 +301,22 @@ public:
 	{
 		return m_QuantumUsage;
 	}
+	inline const void ResetQuantumUsage()
+	{
+		m_QuantumUsage = 0;
+	}
 	inline void UseQuantum(uint32_t burstAmount)
 	{
 		m_QuantumUsage += burstAmount;
+	}
+
+	inline void SetCurrentQueue(uint32_t current)
+	{
+		m_CurrentQueue = current;
+	}
+
+	inline const uint32_t GetCurrentQueue() const {
+		return m_CurrentQueue;
 	}
 
 	inline void RevertBack()
@@ -183,6 +324,7 @@ public:
 		if (m_Used)
 		{
 			m_QuantumUsage = 0;
+			m_CurrentQueue =0;
 			m_RemainingBurst = m_CPUBustTime;
 			m_Status = ProcessStatus::P_UNAVAILABLE;
 			m_TimeStamps.clear();
@@ -216,6 +358,7 @@ public:
 
 	}
 private:
+
 	void PrintOn(std::ostream& os) const
 	{
 		os << "{";
@@ -235,10 +378,19 @@ private:
 	uint32_t m_ArrivalTime;
 	uint32_t m_CPUBustTime;
 	uint32_t m_Priority;
+	uint32_t m_VRunTime;
+	uint32_t m_GlobalPriority;
+	float m_NextVRunTime;
+	uint32_t m_NiceValue;
+	ProcessClass m_ProcessClass;
 	std::string m_ProcessLabel;
 	uint32_t m_RemainingBurst;
 	uint32_t m_QuantumUsage;
 	std::vector<TimeStamp> m_TimeStamps;
 	ProcessStatus m_Status;
+	uint32_t m_StartSchedulingTime;
+	uint32_t m_EndSchedulingTime;
+	int32_t m_FirstResponseTime;
+	uint32_t m_CurrentQueue;
 	bool m_Used;
 };

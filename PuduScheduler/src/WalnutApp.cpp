@@ -77,8 +77,6 @@ public:
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.f, 0.f));
 		static ImVec2 item_spacing{ 0.0f, 0.0f };
 		ImGui::Begin("Scheduler Explorer", nullptr, ImGuiWindowFlags_NoDecoration );
-
-
 		//ImGui::Text("Last render: %.3fms", m_LastRenderTime);
 		//UI::DrawSchedulers();
 		static float alignment = 0.5f;
@@ -92,7 +90,8 @@ public:
 		static ImVec2 widgetBSize = { widget_size.x * 48, widget_size.y};
 		static float a_c_spring_weight = 0.0f;
 		static float ab_spring_weight = 0.5f;
-		
+		static bool isProcessPressed = false;
+		static bool isSchedulerPressed = false;
 		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, { 0.f,0.f });
 		ImGui::BeginHorizontal("h1", layoutSize, alignment);
 		ImGui::Spring(a_c_spring_weight); 
@@ -100,17 +99,16 @@ public:
 		{
 			static bool p = false;
 			ImGui::SetCursorPosY(40.0f);
-			static bool isPressed = false;
 			static bool isPushed = false;
 			
-			if (isPressed)
+			if (isProcessPressed)
 			{
 				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 0.1f, 0.1f, 1.0f));
 				isPushed = true;
 			}
 			if (ImGui::GoxTab("Processes", &p))
 			{
-				isPressed = !isPressed;
+				isProcessPressed = !isProcessPressed;
 				
 				PS_CORE_INFO("Tab hamke pressed ? ");
 			}
@@ -119,7 +117,7 @@ public:
 				ImGui::PopStyleColor();
 				isPushed = false;
 			}
-			if (isPressed)
+			if (isProcessPressed)
 			{
 				ImGui::SetNextWindowPos({ ImGui::GetContentRegionAvail().x, 53 });
 				ImGui::SetNextWindowSize({ 250, 920 });
@@ -149,10 +147,10 @@ public:
 		{
 			static bool p = false;
 			ImGui::SetCursorPosY(40.0f);
-			static bool isPressed = false;
+			
 			static bool isPushed = false;
 
-			if (isPressed)
+			if (isSchedulerPressed)
 			{
 				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 0.1f, 0.1f, 1.0f));
 				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 0.1f, 0.1f, 1.0f));
@@ -161,7 +159,7 @@ public:
 			}
 			if (ImGui::GoxTab("Schedulers", &p))
 			{
-				isPressed = !isPressed;
+				isSchedulerPressed = !isSchedulerPressed;
 
 				PS_CORE_INFO("Tab hamke pressed ? ");
 			}
@@ -170,7 +168,7 @@ public:
 				ImGui::PopStyleColor(2);
 				isPushed = false;
 			}
-			if (isPressed)
+			if (isSchedulerPressed)
 			{
 				ImGui::SetNextWindowPos({ 1375, 53 });
 				ImGui::SetNextWindowSize({ 325, 920 });
@@ -191,7 +189,32 @@ public:
 
 		ImGui::End();
 		ImGui::PopStyleVar();
-		ImGui::ShowDemoWindow();
+
+		if (!Raven::SchedulerHandler::GetSchedulingMetrics().empty())
+		{
+			ImGui::Begin("Details", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoFocusOnAppearing);
+			if (ImGui::IsWindowFocused())
+			{
+				isSchedulerPressed = false;
+				isProcessPressed = false;
+			}
+			UI::DrawDetails();
+			ImGui::End();
+		}
+
+		if (!Raven::SchedulerHandler::GetSchedulingMetrics().empty())
+		{
+			ImGui::Begin("Charts", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoFocusOnAppearing);
+			if (ImGui::IsWindowFocused())
+			{
+				isSchedulerPressed = false;
+				isProcessPressed = false;
+			}
+			ImGui::Text("All charts will be here ?");
+			ImGui::End();
+		}
+
+//		ImGui::ShowDemoWindow();
 
 		Render();
 	}
@@ -235,6 +258,11 @@ Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
 		{
 			if (ImGui::BeginMenu("File"))
 			{
+				if (ImGui::MenuItem("Load Presentation"))
+				{
+					Raven::ProcessHandler::LoadPresentation();
+					Raven::SchedulerHandler::LoadPresentation();
+				}
 				if (ImGui::MenuItem("Exit"))
 				{
 					app->Close();
