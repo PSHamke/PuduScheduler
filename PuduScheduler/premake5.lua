@@ -13,6 +13,7 @@ project "PuduScheduler"
         "../Walnut/vendor/imgui",
         "../Walnut/vendor/glfw/include",
         "../Walnut/vendor/glm",
+        "../Walnut/vendor/implot",
         "../Walnut/Walnut/src",
         "../Raven/vendor/spdlog/include",
         "../Raven/src",

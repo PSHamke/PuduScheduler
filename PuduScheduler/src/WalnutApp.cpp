@@ -11,6 +11,7 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
 
+
 namespace ImGui {
 	bool GoxTab(const char* text, bool* v)
 	{
@@ -120,7 +121,7 @@ public:
 			if (isProcessPressed)
 			{
 				ImGui::SetNextWindowPos({ ImGui::GetContentRegionAvail().x, 53 });
-				ImGui::SetNextWindowSize({ 250, 920 });
+				ImGui::SetNextWindowSize({ 250, 923 });
 				ImGui::Begin("ProcessTab",NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse );
 				ImGui::Text("Processs");
 				UI::DrawProcessTab();
@@ -131,7 +132,7 @@ public:
 		}
 		ImGui::EndChild();
 		ImGui::Spring(ab_spring_weight);
-		ImGui::BeginChild("Widget B", widgetBSize,false, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+		ImGui::BeginChild("Widget B", widgetBSize,false, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysHorizontalScrollbar);
 		{
 			ImVec2 avail = ImGui::GetContentRegionAvail();
 			ImGui::SetCursorPosX((avail.x/2)-150);
@@ -171,7 +172,7 @@ public:
 			if (isSchedulerPressed)
 			{
 				ImGui::SetNextWindowPos({ 1375, 53 });
-				ImGui::SetNextWindowSize({ 325, 920 });
+				ImGui::SetNextWindowSize({ 325, 923 });
 				ImGui::Begin("SchedulersTab", NULL, ImGuiWindowFlags_NoDecoration);
 				
 				UI::DrawSchedulers();
@@ -210,7 +211,10 @@ public:
 				isSchedulerPressed = false;
 				isProcessPressed = false;
 			}
-			ImGui::Text("All charts will be here ?");
+			UI::DrawPlots();
+			ImGui::BeginChild("My Window");
+			ImPlot::ShowDemoWindow();
+			ImGui::EndChild();
 			ImGui::End();
 		}
 
@@ -256,12 +260,16 @@ Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
 	app->PushLayer<ExampleLayer>();
 	app->SetMenubarCallback([app]()
 		{
-			if (ImGui::BeginMenu("File"))
+			if (ImGui::BeginMenu("PUDU"))
 			{
-				if (ImGui::MenuItem("Load Presentation"))
+				if (ImGui::MenuItem("Load Presentation 01"))
 				{
-					Raven::ProcessHandler::LoadPresentation();
 					Raven::SchedulerHandler::LoadPresentation();
+					Raven::ProcessHandler::LoadPresentation();
+				}
+				if (ImGui::MenuItem("Information"))
+				{
+					UI::DrawInformation();
 				}
 				if (ImGui::MenuItem("Exit"))
 				{

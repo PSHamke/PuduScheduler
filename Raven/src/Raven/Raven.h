@@ -232,6 +232,7 @@ namespace Raven
 
 		void ILoadPresentation()
 		{
+			SchedulerHandler::CleanUp();
 			for (int i = 0; i < 7; i++)
 			{
 				IAllocateForScheduler();
@@ -277,7 +278,7 @@ namespace Raven
 					(uint8_t)Comparators::ProcessIdLess
 				};
 				defaultQueueFeature.m_Prop = SchedulerProp::S_NON_PREEMPTIVE;
-				defaultQueueFeature.m_Quantum = 50;
+				defaultQueueFeature.m_Quantum = 8;
 				defaultQueueFeaturesVector.push_back(defaultQueueFeature);
 				defaultSpec.m_QueueFeatures = defaultQueueFeaturesVector;
 				break;
@@ -293,17 +294,17 @@ namespace Raven
 				scheduler = new MultiLevelFeedbackQueueScheduler();
 				defaultQueueFeature.m_PreemptionOrder = {};
 				defaultQueueFeature.m_Prop = SchedulerProp::S_NON_PREEMPTIVE;
-				defaultQueueFeature.m_Quantum = 40;
+				defaultQueueFeature.m_Quantum = 5;
 				defaultQueueFeature.m_Type = SchedulerType::RR;
 				defaultQueueFeaturesVector.push_back(defaultQueueFeature);
 				defaultQueueFeature.m_PreemptionOrder = {};
 				defaultQueueFeature.m_Prop = SchedulerProp::S_NON_PREEMPTIVE;
-				defaultQueueFeature.m_Quantum = 80;
+				defaultQueueFeature.m_Quantum = 6;
 				defaultQueueFeature.m_Type = SchedulerType::RR;
 				defaultQueueFeaturesVector.push_back(defaultQueueFeature);
 				defaultQueueFeature.m_PreemptionOrder = {};
 				defaultQueueFeature.m_Prop = SchedulerProp::S_NON_PREEMPTIVE;
-				defaultQueueFeature.m_Quantum = 120;
+				defaultQueueFeature.m_Quantum = 8;
 				defaultQueueFeature.m_Type = SchedulerType::RR;
 				defaultQueueFeaturesVector.push_back(defaultQueueFeature);
 				defaultQueueFeature.m_PreemptionOrder = {};

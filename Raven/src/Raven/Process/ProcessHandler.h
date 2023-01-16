@@ -81,14 +81,35 @@ namespace Raven
 		}
 		void ILoadPresentation()
 		{
+			/*
+			
+				arrivalTime, // Arrival time
+				burstTime,  // Burst time
+				priority,   // Priority
+				vruntime,
+				niceValue,
+				processClass,
+				globalPriority
+			*/
 			/* Default Processes*/
 			{
-				IGenerateAndSubmit("", 0, 500, 1, 1, 2, ProcessClass::Interactive, 20);
-				IGenerateAndSubmit("", 0, 400, 1, 2, 3, ProcessClass::Interactive, 22);
-				IGenerateAndSubmit("", 0, 300, 1, 1, 2, ProcessClass::Interactive, 18);
-				IGenerateAndSubmit("", 100, 300, 1, 1, 2, ProcessClass::Interactive, 38);
-				IGenerateAndSubmit("", 100, 300, 1, 1, 2, ProcessClass::Interactive, 38);
-				IGenerateAndSubmit("", 2200, 300, 1, 1, 2, ProcessClass::Interactive, 38);
+				IGenerateAndSubmit("", 0, 13, 5, 1, 2, ProcessClass::Interactive, 20);
+				IGenerateAndSubmit("", 0, 5, 4, 2, 3, ProcessClass::System, 61);
+				IGenerateAndSubmit("", 30, 17, 12, 1, 2, ProcessClass::Time_Sharing, 9);
+				IGenerateAndSubmit("", 0, 8, 7, 1, 2, ProcessClass::Fixed_Priority, 18);
+				IGenerateAndSubmit("", 20, 6, 1, 1, 2, ProcessClass::Interactive, 39);
+				IGenerateAndSubmit("", 30, 8, 1, 1, 2, ProcessClass::Real_Time, 124);
+				IGenerateAndSubmit("", 30, 18, 8, 1, 2, ProcessClass::Interactive, 13);
+				IGenerateAndSubmit("", 40, 13, 7, 1, 2, ProcessClass::Time_Sharing, 47);
+				IGenerateAndSubmit("", 160, 22, 6, 1, 2, ProcessClass::Fair_Share, 11);
+				IGenerateAndSubmit("", 0, 20, 1, 1, 2, ProcessClass::Real_Time, 138);
+				IGenerateAndSubmit("", 70, 14, 1, 1, 2, ProcessClass::Fair_Share, 58);
+				IGenerateAndSubmit("", 30, 14, 1, 1, 2, ProcessClass::Real_Time, 140);
+				IGenerateAndSubmit("", 60, 14, 1, 1, 2, ProcessClass::Fixed_Priority, 32);
+				IGenerateAndSubmit("", 160, 14, 1, 1, 2, ProcessClass::System, 88);
+				IGenerateAndSubmit("", 55, 8, 4, 1, 2, ProcessClass::Time_Sharing, 32);
+				IGenerateAndSubmit("", 80, 15, 1, 1, 2, ProcessClass::Fair_Share, 40);
+				IGenerateAndSubmit("", 160, 24, 1, 1, 2, ProcessClass::Fixed_Priority, 14);
 			}
 		}
 		std::optional<Process> IGenerateAndSubmit()

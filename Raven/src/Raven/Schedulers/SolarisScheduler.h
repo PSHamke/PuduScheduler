@@ -275,6 +275,14 @@ public:
 		m_ProcessCharts.clear();
 		m_UnProcessedCount = 0;
 		maxGlobalPriorityAvailable = 0;
+		m_Throughput = 0;
+		m_Utilization = 0;
+		m_TotalExecution = 0;
+		m_Result = 0;
+		m_AVGTurnaroundTime = 0;
+		m_AVGResponseTime = 0;
+		m_AVGWaitingTime = 0;
+
 	}
 	virtual void FillReadyQueue()
 	{

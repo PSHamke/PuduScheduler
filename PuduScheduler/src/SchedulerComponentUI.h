@@ -3,6 +3,8 @@
 #include "imgui_internal.h"
 #include "Raven/Process/ProcessHandler.h"
 #include "Raven/Raven.h"
+#include "implot.h"
+
 namespace UI
 {
 	using enum_Scheduler = SchedulerType;
@@ -936,13 +938,14 @@ namespace UI
 	}
 
 
-	void DrawGanttChart(ImDrawList* drawList, const std::vector<ProcessChart>& timeLine, const ImVec2& startPos, const float height,
+	void DrawGanttChart(ImDrawList* drawList, const std::vector<ProcessChart>& timeLine, const ImVec2& startPos, const float height,float maxWidth,
 		ImU32 rectColor = ImGui::ColorConvertFloat4ToU32(ImVec4{ 0.05f, 0.85f, 0.73f, 0.6f }))
 	{
-		float maxWidth = 1600;
+
 
 		int32_t maxTime = (timeLine.back().m_StartTime + timeLine.back().m_Usage);
-		float proportion = maxWidth / (float)maxTime;
+		float proportion = maxWidth / maxTime;
+		
 		ImVec2 upperLeft = startPos;
 		ImColor col = ImColor(0.0f, 1.0f, 1.0f);
 		ImU32 color = ImGui::ColorConvertFloat4ToU32({ 1,1,1,1 });
@@ -986,6 +989,8 @@ namespace UI
 		//drawList->AddText(upperLeft + ImVec2(-4, 53), ImGui::ColorConvertFloat4ToU32(color), a.c_str());
 		font->Scale = temp;
 		ImGui::PopFont();
+		ImGui::SetCursorScreenPos(ImVec2(upperLeft.x, 0));
+
 	}
 
 	std::vector<ProcessChart> PrepareQueueTimelines(const std::vector<ProcessChart>& processChart, uint32_t currentIndex)
@@ -1017,6 +1022,28 @@ namespace UI
 		Raven::SchedulerHandler::MakeContinuous(result);
 		return result;
 	}
+
+	void CalculateDrawSize(float& maxWidth)
+	{
+		int32_t minUsage = INT32_MAX;
+		int32_t endTime = 0;
+		for (const auto& it : Raven::SchedulerHandler::GetProcessCharts())
+		{
+			for (const auto& it2 : it.second)
+			{
+				minUsage = std::min(minUsage, it2.m_Usage);
+
+			}
+			if (it.second.size() != 0)
+			{
+				endTime = std::max(endTime, it.second.back().m_StartTime + it.second.back().m_Usage);
+			}
+		}
+
+		float minSlice = endTime / minUsage;
+		maxWidth =  std::max( 1570.0f,35 * minSlice);
+	}
+
 	void DrawMid()
 	{
 		if (!Raven::ProcessHandler::GetProcessPool().empty())
@@ -1027,22 +1054,27 @@ namespace UI
 			ImGui::EndChild();
 		}
 		
+		float proportion = 0;
+		float maxWidth  = 0;
+		CalculateDrawSize(maxWidth);
+		PS_CORE_INFO("prop {} maxW {}", proportion, maxWidth);
+
 		ImVec2 startPos = ImGui::GetCursorStartPos() + ImVec2(60,280);
 
 		for (const auto& it : Raven::SchedulerHandler::GetProcessCharts())
 		{
 			const auto& queueFeatures = it.first->m_Scheduler->GetQueueFeatures();
-	
 			std::string childName = std::format("{}",(uint32_t)it.first);
 			ImGui::SetNextWindowPos(startPos);
 			if (it.first->m_Type == SchedulerType::MLFQ)
 			{
-				ImGui::BeginChild(childName.c_str(), ImVec2(1630, 145 * (queueFeatures.size() + 1)), true);
+				
+				ImGui::BeginChild(childName.c_str(), ImVec2(maxWidth+40, 135 * (queueFeatures.size() + 1)), true);
 				startPos.y += 60;
 			}
 			else
 			{
-				ImGui::BeginChild(childName.c_str(), ImVec2(1630, 120), true);
+				ImGui::BeginChild(childName.c_str(), ImVec2(maxWidth+40, 120), true);
 				startPos.y += 30;
 			}
 			ImDrawList* drawList = ImGui::GetWindowDrawList();
@@ -1059,7 +1091,7 @@ namespace UI
 					if (i == queueFeatures.size())
 					{
 						ImGui::Text("Overall Result");
-						DrawGanttChart(drawList, it.second, startPos + ImVec2(10, 0), 50.f, ImGui::ColorConvertFloat4ToU32(ImVec4{ 0.85f, 0.05f, 0.73f, 0.6f })); // FIXME
+						DrawGanttChart(drawList, it.second, startPos + ImVec2(10, 0), 50.f,maxWidth); // FIXME
 						break;
 					}
 
@@ -1069,13 +1101,13 @@ namespace UI
 						ImGui::Text("Queue-%d [%s]", i + 1, schedulerAbbrevations[(uint8_t)queueFeatures[i].m_Type]);
 
 					const auto& queueTimeline = PrepareQueueTimelines(it.second, i);
-					DrawGanttChart(drawList, queueTimeline, startPos + ImVec2(10, 0), 50.f); // FIXME
+					DrawGanttChart(drawList, queueTimeline, startPos + ImVec2(10, 0), 50.f, maxWidth, ImGui::ColorConvertFloat4ToU32(ImVec4{ 0.85f, 0.05f, 0.73f, 0.6f })); // FIXME
 					startPos.y += 120;
 				}
 			}
 			else
 			{
-				DrawGanttChart(drawList, it.second, startPos + ImVec2(10, 0), 50.f);
+				DrawGanttChart(drawList, it.second, startPos + ImVec2(10, 0), 50.f, maxWidth);
 			}
 			ImGui::EndChild();
 			startPos.y += 150;
@@ -1179,7 +1211,7 @@ namespace UI
 						ImGui::TableNextRow();
 
 						ImGui::TableSetColumnIndex(0);
-						ImGui::Text("%s", it.m_SchedulingMetrics[row].m_Label);
+						ImGui::Text("%s", it.m_SchedulingMetrics[row].m_Label.c_str());
 
 						ImGui::TableSetColumnIndex(1);
 						ImGui::Text("%d", it.m_SchedulingMetrics[row].m_TurnaroundTime);
@@ -1198,7 +1230,192 @@ namespace UI
 			//ImGui::Text("%s %d %d %d",it2.m_Label.c_str(), it2.m_TurnaroundTime, it2.m_WaitingTime, it2.m_ResponseTime);
 		
 		}
+
 	}
 
+	void MapArrayValues(float* arr, uint32_t size, uint32_t to = 1)
+	{
+		float min = 0;
+		float max = 0;
+		for (uint32_t i = 0; i < size; ++i)
+		{
+			min = std::min(arr[i], min);
+			max = std::max(arr[i], max);
+		}
 
+		float newRange = max - min;
+		newRange /= to;
+		for (uint32_t i = 0; i < size; ++i)
+		{
+			arr[i] /= newRange;
+		}
+	}
+
+	void DrawPlots()
+	{
+
+		const auto& schedulingMetrics = Raven::SchedulerHandler::GetSchedulingMetrics();
+
+		float* tThroughput = new float[schedulingMetrics.size()];
+		float* tUtilization = new float[schedulingMetrics.size()];
+		float* tAVGWaitingTime = new float[schedulingMetrics.size()];
+		float* tAVGResponseTime = new float[schedulingMetrics.size()];
+		float* tAVGTurnaroundTime = new float[schedulingMetrics.size()];
+		float* tTest = new float[schedulingMetrics.size() *5];
+		const char** gLabels = new const char* [schedulingMetrics.size()];
+
+		for (uint32_t i = 0; i < schedulingMetrics.size(); ++i)
+		{
+			tThroughput[i] = schedulingMetrics[i].m_Throughput;
+			tUtilization[i] = (1 - schedulingMetrics[i].m_Utilization)*100;
+			tAVGWaitingTime[i] = schedulingMetrics[i].m_AVGWaiting;
+			tAVGResponseTime[i] = schedulingMetrics[i].m_AVGResponse;
+			tAVGTurnaroundTime[i] = schedulingMetrics[i].m_AVGTurnAround;
+			gLabels[i] = schedulerAbbrevations[(uint32_t)schedulingMetrics[i].m_SchedulerPtr->m_Type];
+		}
+
+		MapArrayValues(tThroughput, schedulingMetrics.size(), 100);
+		MapArrayValues(tUtilization, schedulingMetrics.size(), 100);
+		MapArrayValues(tAVGWaitingTime, schedulingMetrics.size(), 100);
+		MapArrayValues(tAVGResponseTime, schedulingMetrics.size(), 100);
+		MapArrayValues(tAVGTurnaroundTime, schedulingMetrics.size(), 100);
+		
+		for (uint32_t i = 0; i < schedulingMetrics.size(); ++i)
+		{
+			tTest[schedulingMetrics.size() * 0 + i] = tThroughput[i];
+			tTest[schedulingMetrics.size() * 1 + i] = tUtilization[i];
+			tTest[schedulingMetrics.size() * 2 + i] = tAVGWaitingTime[i];
+			tTest[schedulingMetrics.size() * 3 + i] = tAVGResponseTime[i];
+			tTest[schedulingMetrics.size() * 4 + i] = tAVGTurnaroundTime[i];
+		}
+
+
+
+		static const double positions[] = { 0,1,2,3,4,5,6,7,9,10 };
+		static const char* ilabels[] = {"Throughput", "Utilization","Waiting Time", "Response Time","Turnaround Time"};
+		static int items = 5;
+		static int groups = schedulingMetrics.size();
+		static float size = 0.67f;
+
+		static ImPlotBarGroupsFlags flags = 0;
+		static bool horz = false;
+		static uint32_t borderSize = 1630;
+		static uint32_t availX = ImGui::GetContentRegionAvail().x;
+
+		ImPlotStyle* style = &ImPlot::GetStyle();
+		ImVec4* colors = style->Colors;
+
+		style->MinorAlpha = 0.25f;
+
+		colors[ImPlotCol_Line] = IMPLOT_AUTO_COL;
+		//colors[ImPlotCol_Fill] = ImVec4(0.50f, 0.20f, 1.00f, 0.50f);
+		colors[ImPlotCol_Fill] = IMPLOT_AUTO_COL;
+		colors[ImPlotCol_MarkerOutline] = IMPLOT_AUTO_COL;
+		colors[ImPlotCol_MarkerFill] = IMPLOT_AUTO_COL;
+		colors[ImPlotCol_ErrorBar] = IMPLOT_AUTO_COL;
+		colors[ImPlotCol_FrameBg] = ImVec4(1.00f, 1.00f, 1.00f, 0.07f);
+		colors[ImPlotCol_PlotBg] = ImVec4(0.00f, 0.00f, 0.00f, 0.50f);
+		colors[ImPlotCol_PlotBorder] = ImVec4(0.43f, 0.43f, 0.50f, 0.50f);
+		colors[ImPlotCol_LegendBg] = ImVec4(0.08f, 0.08f, 0.08f, 0.94f);
+		colors[ImPlotCol_LegendBorder] = ImVec4(0.43f, 0.43f, 0.50f, 0.50f);
+		colors[ImPlotCol_LegendText] = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+		colors[ImPlotCol_TitleText] = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+		colors[ImPlotCol_InlayText] = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+		colors[ImPlotCol_AxisText] = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+		colors[ImPlotCol_AxisGrid] = ImVec4(1.00f, 1.00f, 1.00f, 0.25f);
+		colors[ImPlotCol_AxisTick] = IMPLOT_AUTO_COL; // TODO
+		colors[ImPlotCol_AxisBg] = IMPLOT_AUTO_COL; // TODO
+		colors[ImPlotCol_AxisBgHovered] = IMPLOT_AUTO_COL; // TODO
+		colors[ImPlotCol_AxisBgActive] = IMPLOT_AUTO_COL; // TODO
+		colors[ImPlotCol_Selection] = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
+		colors[ImPlotCol_Crosshairs] = ImVec4(1.00f, 1.00f, 1.00f, 0.50f);
+		ImPlotAxisFlags axisFlagX =  ImPlotAxisFlags_NoHighlight;
+		ImPlotAxisFlags axisFlagY =  ImPlotAxisFlags_NoHighlight;
+
+		ImGui::SetCursorPosX((availX - borderSize) / 2);
+		ImGui::BeginChild("Test", ImVec2(1630, 330), true);
+		if (ImPlot::BeginPlot("Overall Results (All Data Mapped to Range 0 - 100)")) {
+			ImPlot::SetupLegend(ImPlotLocation_East, ImPlotLegendFlags_Outside);
+			ImPlot::SetupAxesLimits(-2, schedulingMetrics.size()+2, 0, 120);
+			ImPlot::SetupAxes("Schedulers", "Score", axisFlagX, axisFlagY);
+			ImPlot::SetupAxisTicks(ImAxis_X1, positions, groups, gLabels);
+			ImPlot::PlotBarGroups(ilabels, tTest, items, groups, size, 0, flags);
+			//ImPlot::PlotBars("Process Per MS", tThroughput, schedulingMetrics.size(), 0.4, 0);
+			ImPlot::EndPlot();
+		}
+		ImGui::EndChild();
+
+		ImGui::SetCursorPosX(( availX- borderSize)/2);
+		ImGui::BeginChild("ThroughputComparison", ImVec2(1630, 330), true);
+		if (ImPlot::BeginPlot("Throughput Comparison")) {
+			ImPlot::SetupLegend(ImPlotLocation_East, ImPlotLegendFlags_Outside);
+			ImPlot::SetupAxesLimits(-2, schedulingMetrics.size() + 2, 0, 120);
+			ImPlot::SetupAxes("Schedulers", "Process Per MS", axisFlagX, axisFlagY);
+			ImPlot::SetupAxisTicks(ImAxis_X1, positions, groups, gLabels);
+			//ImPlot::PlotBarGroups(ilabels, data, items, groups, size, 0, flags);
+			ImPlot::PlotBars("Process Per MS", tThroughput, schedulingMetrics.size(), 0.3, 0);
+			ImPlot::EndPlot();
+		}
+		ImGui::EndChild();
+		ImGui::SetCursorPosX((availX - borderSize) / 2);
+		ImGui::BeginChild("UtilzationComparison", ImVec2(1630, 330), true);
+		if (ImPlot::BeginPlot("Utilization Comparison")) {
+			ImPlot::SetupLegend(ImPlotLocation_East, ImPlotLegendFlags_Outside);
+			ImPlot::SetupAxesLimits(-2, schedulingMetrics.size() + 2, 0, 120);
+			ImPlot::SetupAxes("Schedulers", "CPU Utilization", axisFlagX, axisFlagY);
+			ImPlot::SetupAxisTicks(ImAxis_X1, positions, groups, gLabels);
+			//ImPlot::PlotBarGroups(ilabels, data, items, groups, size, 0, flags);
+			ImPlot::PlotBars("Percentage", tUtilization, schedulingMetrics.size(), 0.3, 0);
+			ImPlot::EndPlot();
+		}
+		ImGui::EndChild();
+		ImGui::SetCursorPosX((availX - borderSize) / 2);
+		ImGui::BeginChild("AVGWaitingTimeComparison", ImVec2(1630, 330), true);
+		if (ImPlot::BeginPlot("AVG Waiting Time Comparison")) {
+			ImPlot::SetupLegend(ImPlotLocation_East, ImPlotLegendFlags_Outside);
+			ImPlot::SetupAxesLimits(-2, schedulingMetrics.size() + 2, 0, 120);
+			ImPlot::SetupAxes("Schedulers", "AVG Waiting Time", axisFlagX, axisFlagY);
+			ImPlot::SetupAxisTicks(ImAxis_X1, positions, groups, gLabels);
+			//ImPlot::PlotBarGroups(ilabels, data, items, groups, size, 0, flags);
+			ImPlot::PlotBars("Waiting Unit Time", tAVGWaitingTime, schedulingMetrics.size(), 0.3, 0);
+			ImPlot::EndPlot();
+		}
+		ImGui::EndChild();
+		ImGui::SetCursorPosX((availX - borderSize) / 2);
+		ImGui::BeginChild("AVGTurnaroundComparison", ImVec2(1630, 330), true);
+		if (ImPlot::BeginPlot("AVG Turnaround Time Comparison")) {
+			ImPlot::SetupLegend(ImPlotLocation_East, ImPlotLegendFlags_Outside);
+			ImPlot::SetupAxesLimits(-2, schedulingMetrics.size() + 2, 0, 120);
+			ImPlot::SetupAxes("Schedulers", "AVG Turnaround Time", axisFlagX, axisFlagY);
+			ImPlot::SetupAxisTicks(ImAxis_X1, positions, groups, gLabels);
+			//ImPlot::PlotBarGroups(ilabels, data, items, groups, size, 0, flags);
+			ImPlot::PlotBars("Turnaround Time", tAVGTurnaroundTime, schedulingMetrics.size(), 0.3, 0);
+			ImPlot::EndPlot();
+		}
+		ImGui::EndChild();
+		ImGui::SetCursorPosX((availX - borderSize) / 2);
+		ImGui::BeginChild("AVGResponseTimeComparison", ImVec2(1630, 330), true);
+		if (ImPlot::BeginPlot("AVG Response Time Comparison")) {
+			ImPlot::SetupLegend(ImPlotLocation_East, ImPlotLegendFlags_Outside);
+			ImPlot::SetupAxesLimits(-2, schedulingMetrics.size() + 2, 0, 120);
+			ImPlot::SetupAxes("Schedulers", "AVG Response Time", axisFlagX, axisFlagY);
+			ImPlot::SetupAxisTicks(ImAxis_X1, positions, groups, gLabels);
+			//ImPlot::PlotBarGroups(ilabels, data, items, groups, size, 0, flags);
+			ImPlot::PlotBars("Response Time", tAVGResponseTime, schedulingMetrics.size(), 0.3, 0);
+			ImPlot::EndPlot();
+		}
+		ImGui::EndChild();
+
+		delete[] tThroughput;
+		delete[] tUtilization;
+		delete[] tAVGWaitingTime;
+		delete[] tAVGResponseTime;
+		delete[] tAVGTurnaroundTime;
+		delete[] gLabels;
+	}
+	
+	void DrawInformation()
+	{
+
+	}
 }
